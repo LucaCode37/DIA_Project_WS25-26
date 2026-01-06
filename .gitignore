@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+outputs/
+data/
+data/raw/timetables/*.tar.gz   # optional: falls du nicht wilst, dass tar.gz im repo sind
+data/raw/timetables/*/
+.vscode/
+.project
