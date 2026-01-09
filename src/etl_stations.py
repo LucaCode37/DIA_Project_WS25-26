@@ -49,4 +49,7 @@ def pick_main_eva_and_coords(station_obj) -> Tuple[Optional[int], Optional[float
     return eva, lat, lon
 
 def main():
+    ##TODO
     
+    return 0
+

@@ -1,11 +1,6 @@
-pandas>=1.3
-pyarrow
 jsonschema
 lxml
-tqdm
 pytest
-folium
-geopandas
 sqlalchemy
 psycopg2-binary
 pyspark
