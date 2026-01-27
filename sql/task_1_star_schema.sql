@@ -1,17 +1,4 @@
--- =========================================================
--- DIA DBahn Berlin - Star Schema (Task 1.1)
--- Based on group member's improved design
--- 3 DIMENSION TABLES and 1 FACT TABLE
--- =========================================================
-
--- Drop existing tables if any
-DROP TABLE IF EXISTS fact_train_movement CASCADE;
-DROP TABLE IF EXISTS dim_time CASCADE;
-DROP TABLE IF EXISTS dim_train CASCADE;
-DROP TABLE IF EXISTS dim_station CASCADE;
-
-
--- Station dimension: keep EVA as the single external identifier
+-- Station dimension
 CREATE TABLE dim_station (
   station_key   BIGSERIAL PRIMARY KEY,
   eva           BIGINT NOT NULL UNIQUE,     -- identifier used in xml
@@ -20,7 +7,7 @@ CREATE TABLE dim_station (
   lon           DOUBLE PRECISION
 );
 
--- Train dimension (minimal; you can extend later)
+-- Train dimension
 CREATE TABLE dim_train (
   train_key     BIGSERIAL PRIMARY KEY,
   category      TEXT NOT NULL,              -- tl.c
@@ -31,7 +18,7 @@ CREATE TABLE dim_train (
   UNIQUE (category, train_number, owner, trip_type, filter_flags)
 );
 
--- Time dimension (minute granularity is enough)
+-- Time dimension 
 CREATE TABLE dim_time (
   time_key   BIGINT PRIMARY KEY,            -- e.g., 202509051116
   ts         TIMESTAMP WITHOUT TIME ZONE NOT NULL UNIQUE,
@@ -43,7 +30,7 @@ CREATE TABLE dim_time (
 );
 
 
--- Fact table: one row per (station, train, stop_id, event_type) observed at a snapshot
+-- Fact table
 CREATE TABLE fact_train_movement (
   movement_key       BIGSERIAL PRIMARY KEY,
 

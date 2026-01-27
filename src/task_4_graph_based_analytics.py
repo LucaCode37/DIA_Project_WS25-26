@@ -15,6 +15,7 @@ import heapq
 from collections import defaultdict
 from postgres_connector import PostgresConnector
 
+# Station Name Normalization
 
 def normalize_station_name(name: str) -> str:
     """Normalize station names to handle variants like (S), (U) suffixes and Berlin- prefix."""
@@ -37,14 +38,12 @@ def normalize_station_name(name: str) -> str:
 
 def build_static_graph() -> nx.DiGraph:
     """Build network graph from planned paths in fact_train_movement."""
-    print("\n" + "=" * 70)
-    print("BUILDING STATIC GRAPH FROM PLANNED PATHS")
-    print("=" * 70)
     
     connector = PostgresConnector()
     conn = connector.connect()
     cursor = conn.cursor()
     
+    # Fetch distinct planned paths for departure events
     cursor.execute("""
         SELECT DISTINCT planned_path
         FROM fact_train_movement
@@ -53,6 +52,7 @@ def build_static_graph() -> nx.DiGraph:
           AND planned_path != ''
     """)
     
+    # Build directed graph
     G = nx.DiGraph()
     edge_set = set()
     
@@ -79,7 +79,7 @@ def build_static_graph() -> nx.DiGraph:
     cursor.close()
     connector.close()
     
-    print(f"✓ Graph built: {G.number_of_nodes()} stations, {G.number_of_edges()} connections")
+    print(f"Graph built: {G.number_of_nodes()} stations, {G.number_of_edges()} connections")
     return G
 
 #Task 4.1 Shortest path by station hops
@@ -109,11 +109,11 @@ def find_shortest_path(G: nx.DiGraph, source: str, target: str) -> Optional[Tupl
     target_node = find_node(target_norm)
     
     if not source_node:
-        print(f"  ✗ Source station '{source}' (normalized: '{source_norm}') not found in graph")
+        print(f"  Source station '{source}' (normalized: '{source_norm}') not found in graph")
         return None
     
     if not target_node:
-        print(f"  ✗ Target station '{target}' (normalized: '{target_norm}') not found in graph")
+        print(f"  Target station '{target}' (normalized: '{target_norm}') not found in graph")
         return None
     
     try:
@@ -121,20 +121,21 @@ def find_shortest_path(G: nx.DiGraph, source: str, target: str) -> Optional[Tupl
         hops = len(path) - 1
         return (path, hops)
     except nx.NetworkXNoPath:
-        print(f"  ✗ No path exists between {source_node} and {target_node}")
+        print(f"  No path exists between {source_node} and {target_node}")
         return None
 
+# Create Timetable Graph
 
 def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
     """Build timetable graph from arrival/departure events."""
-    print("\n" + "=" * 70)
-    print(f"BUILDING TIMETABLE GRAPH FOR {snapshot_date}")
-    print("=" * 70)
+    print(f"Building Timetable Graph for {snapshot_date}")
+    
     
     connector = PostgresConnector()
     conn = connector.connect()
     cursor = conn.cursor()
     
+    # Fetch train movements for the given date
     cursor.execute("""
         SELECT 
             f.train_key,
@@ -155,7 +156,7 @@ def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
     cursor.close()
     connector.close()
     
-    print(f"✓ Loaded {len(movements)} movements")
+    print(f"Loaded {len(movements)} movements")
     
     trains = defaultdict(list)
     for train_key, station, event_type, ts, stop_id in movements:
@@ -184,13 +185,14 @@ def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
                     'train_id': train_key
                 })
     
-    print(f"✓ Created {len(connections)} train connections from {len(trains)} trains")
+    print(f"Created {len(connections)} train connections from {len(trains)} trains")
     
     return {
         'connections': connections,
         'date': snapshot_date
     }
 
+# Task 4.2 Earliest arrival time with timetable
 
 def earliest_arrival_time(
     timetable: Dict,
@@ -210,6 +212,7 @@ def earliest_arrival_time(
         all_stations.add(conn['from_station'])
         all_stations.add(conn['to_station'])
     
+    
     def find_station(search: str) -> Optional[str]:
         if search in all_stations:
             return search
@@ -226,11 +229,11 @@ def earliest_arrival_time(
     target_station = find_station(target_norm)
     
     if not source_station:
-        print(f"  ✗ Source '{source}' not found in timetable")
+        print(f"  Source '{source}' not found in timetable")
         return None
     
     if not target_station:
-        print(f"  ✗ Target '{target}' not found in timetable")
+        print(f"  Target '{target}' not found in timetable")
         return None
     
     counter = 0
@@ -238,6 +241,7 @@ def earliest_arrival_time(
     counter += 1
     visited = {}
     
+    # Dijkstra's Algorithm
     while pq:
         current_time, _, current_station, path, current_train = heapq.heappop(pq)
         
@@ -247,6 +251,7 @@ def earliest_arrival_time(
         if current_station in visited and visited[current_station] <= current_time:
             continue
         visited[current_station] = current_time
+        
         
         for conn in outgoing[current_station]:
             if conn['departure_time'] >= current_time:
@@ -260,11 +265,13 @@ def earliest_arrival_time(
     
     return None
 
+# Demo Functions (can change test_routes, for more example)
 
 def task_4_1_demo():
-    print("\n" + "=" * 70)
-    print("TASK 4.1: SHORTEST PATH (STATION HOPS)")
-    print("=" * 70)
+    print("\n")
+    print("TASK 4.1: SHORTEST PATH")
+    print("\n")
+    
     
     G = build_static_graph()
     
@@ -277,6 +284,8 @@ def task_4_1_demo():
         ("Berlin-Neukölln", "Berlin Gesundbrunnen"),
         ("Berlin-Schöneberg", "Berlin-Wedding"),
         ("Berlin-Tempelhof", "Berlin Charlottenburg"),
+        ("Nürnberg Hbf", "München Hbf"),  # Works: south direction
+        ("München Hbf", "Nürnberg Hbf"),  # Fails: no north direction in data (diGraph)
     ]
     
     for source, target in test_routes:
@@ -284,16 +293,16 @@ def task_4_1_demo():
         
         if result:
             path, hops = result
-            print(f"  ✓ Shortest path ({hops} hops):")
+            print(f"Shortest path ({hops} hops):")
             print(f"    {' → '.join(path)}")
         else:
-            print(f"  ✗ No path found")
+            print(f"No path found")
 
 
 def task_4_2_demo():
-    print("\n" + "=" * 70)
+    print("\n")
     print("TASK 4.2: EARLIEST ARRIVAL TIME")
-    print("=" * 70)
+    print("\n")
     
     timetable = build_timetable_graph("2025-09-02")
     
@@ -313,27 +322,26 @@ def task_4_2_demo():
     for source, target in test_routes:
         print(f"\nRoute: {source} → {target}")
         print(f"Departure: {departure.strftime('%Y-%m-%d %H:%M')}")
-        
+        print()
         result = earliest_arrival_time(timetable, source, target, departure)
         
         if result:
             arrival, segments = result
             duration = (arrival - departure).total_seconds() / 60
             
-            print(f"  ✓ Arrival: {arrival.strftime('%H:%M')} (Duration: {duration:.0f} min)")
-            print(f"    Segments: {len(segments)} train(s), {len(set(s['to_station'] for s in segments))} station(s)")
+            print(f" Arrival: {arrival.strftime('%H:%M')} (Duration: {duration:.0f} min)")
+            print(f" Segments: {len(segments)} trains, {len(set(s['to_station'] for s in segments))} stations")
             
             for i, seg in enumerate(segments, 1):
                 dep_time = seg['departure_time'].strftime('%H:%M')
                 arr_time = seg['arrival_time'].strftime('%H:%M')
                 print(f"      {i}. {seg['from_station']} ({dep_time}) → {seg['to_station']} ({arr_time})")
         else:
-            print(f"  ✗ No route found")
+            print(f"No route found")
 
+# Run Demos
 
 if __name__ == "__main__":
     task_4_1_demo()
     task_4_2_demo()
-    print("\n" + "=" * 70)
-    print("TASK 4 COMPLETE")
-    print("=" * 70)
+
