@@ -8,36 +8,112 @@ Implements two routing algorithms:
 Note: Station hops count, not transfers. Station variants are normalized.
 """
 
-import networkx as nx
+import networkx as n
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple, Set
 import heapq
 from collections import defaultdict
 from postgres_connector import PostgresConnector
 
-# Station Name Normalization
+
+# Print all unique station names (for lookup and normalization)
+def print_unique_station_names(normalize=True):
+    """Print all unique station names from planned_path, optionally normalized."""
+    connector = PostgresConnector()
+    conn = connector.connect()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT planned_path
+        FROM fact_train_movement
+        WHERE event_type = 'D' 
+          AND planned_path IS NOT NULL
+          AND planned_path != ''
+    """)
+    station_set = set()
+    for (path_str,) in cursor:
+        if not path_str:
+            continue
+        stations = [s.strip() for s in path_str.split('|') if s.strip()]
+        if normalize:
+            stations = [normalize_station_name(s) for s in stations]
+        station_set.update(stations)
+    cursor.close()
+    connector.close()
+    print(f"Unique stations (normalize={normalize}): {len(station_set)}")
+    for s in sorted(station_set):
+        print(s)
+
+
+# Station Name Normalization, replacing aliases and removing suffixes
 
 def normalize_station_name(name: str) -> str:
-    """Normalize station names to handle variants like (S), (U) suffixes and Berlin- prefix."""
+
     # Remove trailing type suffixes
     name = name.replace(" (S)", "").replace(" (U)", "").replace(" (S+U)", "")
     name = name.replace("(S)", "").replace("(U)", "").replace("(S+U)", "")
     
     if name.startswith("Berlin-"):
         name = "Berlin " + name[7:]
-    
+    #long aliases mapping, could be extended, use print_unique_station_names to find more
     aliases = {
+        # Berlin S +U stations
         "Berlin Zoo": "Berlin Zoologischer Garten",
-        "Zoo": "Berlin Zoologischer Garten"
+        "Zoo": "Berlin Zoologischer Garten",
+        "Berlin Hauptbahnhof": "Berlin Hbf",
+        "Berlin Hbf (S-Bahn)": "Berlin Hbf",
+        "Berlin Ostbahnhof (S)": "Berlin Ostbahnhof",
+        "Berlin Charlottenburg (S)": "Berlin Charlottenburg",
+        "Berlin Potsdamer Platz (S)": "Berlin Potsdamer Platz",
+        "Berlin Gesundbrunnen(S)": "Berlin Gesundbrunnen",
+        "Berlin Yorckstr.(S1)": "Berlin Yorckstraße",
+        "Berlin Yorckstr.(S2)": "Berlin Yorckstraße",
+        "Berlin Südkreuz (Bus)": "Berlin Südkreuz",
+        "Berlin Friedrichstraße (S)": "Berlin Friedrichstraße",
+        "Berlin Südkreuz (S)": "Berlin Südkreuz",
+        "Berlin Westkreuz (S)": "Berlin Westkreuz",
+        "Berlin Ostkreuz (S)": "Berlin Ostkreuz",
+        "Berlin Lichtenberg (S)": "Berlin Lichtenberg",
+        "Berlin-Lichtenrade (S)": "Berlin-Lichtenrade",
+        "Berlin-Mahlsdorf (S)": "Berlin-Mahlsdorf",
+        "Berlin-Marzahn (S)": "Berlin-Marzahn",
+        "Berlin-Neukölln (S)": "Berlin-Neukölln",
+        "Berlin-Rahnsdorf (S)": "Berlin-Rahnsdorf",
+        "Berlin-Schöneweide (S)": "Berlin-Schöneweide",
+        "Berlin-Spandau (S)": "Berlin-Spandau",
+        "Berlin-Staaken (S)": "Berlin-Staaken",
+        "Berlin-Tegel (S)": "Berlin-Tegel",
+        "Berlin-Wannsee (S)": "Berlin-Wannsee",
+        "Berlin-Wedding (S)": "Berlin-Wedding",
+        "Berlin-Wuhlheide (S)": "Berlin-Wuhlheide",
+        "Berlin-Zehlendorf (S)": "Berlin-Zehlendorf",
+        "Berlin Wittenau (Wilhelmsruher Damm)": "Berlin Wittenau",
+        "Wittenau [Bus] (U), Berlin": "Wittenau [Bus], Berlin",
+        "Treptower Park [Bus Puschkinallee] (S), Berlin": "Treptower Park [Bus Puschkinallee], Berlin",
+        "Treptower Park [Bus Treptowers] (S), Berlin": "Treptower Park [Bus Treptowers], Berlin",
+        "Bernau (S)": "Bernau",
+        "Bernau(b Berlin)": "Bernau",
+        "Blankenburg (S), Berlin": "Blankenburg, Berlin",
+        "Buch (S), Berlin": "Berlin Buch",
+        "Erkner (S)": "Erkner",
+        "Fredersdorf (S)": "Fredersdorf",
+        "Hennigsdorf (S)": "Hennigsdorf",
+        "Karow Bahnhof (S), Berlin": "Berlin Karow",
+        "Pankow-Heinersdorf (S), Berlin": "Berlin Pankow-Heinersdorf",
+        "Borgsdorf, Hohen Neuendorf": "Borgsdorf",
+        "Birkenwerder Hauptstraße": "Birkenwerder",
+        "Buch, Berlin": "Berlin Buch",
+        "Karow Bahnhof, Berlin": "Berlin Karow",
+        "Pankow-Heinersdorf, Berlin": "Berlin Pankow-Heinersdorf",
+        "Köpenick/Parrisiusstr., Berlin": "Berlin Köpenick",
+        "Blankenburg, Berlin": "Berlin Blankenburg",
     }
-    
     return aliases.get(name, name).strip()
 
 
-# Create Graph 
+# Create Graph for Task 4.1
 
-def build_static_graph() -> nx.DiGraph:
-    """Build network graph from planned paths in fact_train_movement."""
+def build_static_graph() -> n.DiGraph:
+    #Build network graph from planned paths in fact_train_movement.
     
     connector = PostgresConnector()
     conn = connector.connect()
@@ -53,9 +129,10 @@ def build_static_graph() -> nx.DiGraph:
     """)
     
     # Build directed graph
-    G = nx.DiGraph()
+    G = n.DiGraph()
     edge_set = set()
     
+
     for (path_str,) in cursor:
         if not path_str:
             continue
@@ -75,7 +152,6 @@ def build_static_graph() -> nx.DiGraph:
                 if edge_key not in edge_set:
                     G.add_edge(source, target)
                     edge_set.add(edge_key)
-    
     cursor.close()
     connector.close()
     
@@ -84,7 +160,7 @@ def build_static_graph() -> nx.DiGraph:
 
 #Task 4.1 Shortest path by station hops
 
-def find_shortest_path(G: nx.DiGraph, source: str, target: str) -> Optional[Tuple[List[str], int]]:
+def find_shortest_path(G: n.DiGraph, source: str, target: str) -> Optional[Tuple[List[str], int]]:
     """Find shortest path using BFS. Returns (path, hop_count) or None."""
     source_norm = normalize_station_name(source)
     target_norm = normalize_station_name(target)
@@ -94,7 +170,6 @@ def find_shortest_path(G: nx.DiGraph, source: str, target: str) -> Optional[Tupl
             return search_name
         
         candidates = [n for n in G.nodes() if search_name.lower() in n.lower()]
-        
         if len(candidates) == 0:
             return None
         elif len(candidates) == 1:
@@ -109,25 +184,24 @@ def find_shortest_path(G: nx.DiGraph, source: str, target: str) -> Optional[Tupl
     target_node = find_node(target_norm)
     
     if not source_node:
-        print(f"  Source station '{source}' (normalized: '{source_norm}') not found in graph")
+        print(f"  Source station '{source}' ,normalized: '{source_norm}' not found in graph")
         return None
-    
     if not target_node:
-        print(f"  Target station '{target}' (normalized: '{target_norm}') not found in graph")
+        print(f"  Target station '{target}' ,normalized: '{target_norm}' not found in graph")
         return None
-    
     try:
-        path = nx.shortest_path(G, source_node, target_node)
+        # Find shortest path
+        path = n.shortest_path(G, source_node, target_node)
         hops = len(path) - 1
         return (path, hops)
-    except nx.NetworkXNoPath:
+    except n.NetworkXNoPath:
         print(f"  No path exists between {source_node} and {target_node}")
         return None
 
 # Create Timetable Graph
 
 def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
-    """Build timetable graph from arrival/departure events."""
+    #Build timetable graph from arrival/departure events.
     print(f"Building Timetable Graph for {snapshot_date}")
     
     
@@ -156,9 +230,12 @@ def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
     cursor.close()
     connector.close()
     
+    
     print(f"Loaded {len(movements)} movements")
     
+    
     trains = defaultdict(list)
+    
     for train_key, station, event_type, ts, stop_id in movements:
         trains[train_key].append({
             'station': normalize_station_name(station),
@@ -169,7 +246,9 @@ def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
     
     connections = []
     
+    
     for train_key, stops in trains.items():
+        # Sort stops by time
         stops.sort(key=lambda x: x['time'])
         
         for i in range(len(stops) - 1):
@@ -194,25 +273,21 @@ def build_timetable_graph(snapshot_date: str = "2025-09-02") -> Dict:
 
 # Task 4.2 Earliest arrival time with timetable
 
-def earliest_arrival_time(
-    timetable: Dict,
-    source: str,
-    target: str,
-    departure_time: datetime
-) -> Optional[Tuple[datetime, List[Dict]]]:
-    """Find earliest arrival using Dijkstra. Allows transfers without wait time."""
+def earliest_arrival_time(timetable: Dict, source: str, target: str, departure_time: datetime ) -> Optional[Tuple[datetime, List[Dict]]]:
+
     source_norm = normalize_station_name(source)
     target_norm = normalize_station_name(target)
     
     outgoing = defaultdict(list)
     all_stations = set()
     
+    
     for conn in timetable['connections']:
         outgoing[conn['from_station']].append(conn)
         all_stations.add(conn['from_station'])
         all_stations.add(conn['to_station'])
     
-    
+    #
     def find_station(search: str) -> Optional[str]:
         if search in all_stations:
             return search
@@ -236,7 +311,9 @@ def earliest_arrival_time(
         print(f"  Target '{target}' not found in timetable")
         return None
     
+    # Dijkstra's initialization
     counter = 0
+    # Priority queue: (arrival_time, counter, station, path, current_train)
     pq = [(departure_time, counter, source_station, [], None)]
     counter += 1
     visited = {}
@@ -244,10 +321,10 @@ def earliest_arrival_time(
     # Dijkstra's Algorithm
     while pq:
         current_time, _, current_station, path, current_train = heapq.heappop(pq)
-        
+        # Check if reached target
         if current_station == target_station:
             return (current_time, path)
-        
+        # Skip if already visited with an earlier time
         if current_station in visited and visited[current_station] <= current_time:
             continue
         visited[current_station] = current_time
@@ -274,7 +351,7 @@ def task_4_1_demo():
     
     
     G = build_static_graph()
-    
+    # Test routes, can modify
     test_routes = [
         ("Berlin Alexanderplatz", "Berlin-Spandau"),
         ("Berlin Ostbahnhof", "Berlin Zoo"),
@@ -307,7 +384,7 @@ def task_4_2_demo():
     timetable = build_timetable_graph("2025-09-02")
     
     departure = datetime(2025, 9, 2, 12, 0, tzinfo=timezone.utc)
-    
+    # Test routes, can modify
     test_routes = [
         ("Berlin Ostbahnhof", "Berlin Zoologischer Garten"),
         ("Berlin Hauptbahnhof", "Berlin Ostkreuz"),
@@ -318,20 +395,17 @@ def task_4_2_demo():
         ("Berlin Ostbahnhof", "Berlin Südkreuz"),
         ("Alexanderplatz", "Berlin Gesundbrunnen"),
     ]
-    
     for source, target in test_routes:
         print(f"\nRoute: {source} → {target}")
         print(f"Departure: {departure.strftime('%Y-%m-%d %H:%M')}")
         print()
         result = earliest_arrival_time(timetable, source, target, departure)
-        
         if result:
             arrival, segments = result
             duration = (arrival - departure).total_seconds() / 60
             
             print(f" Arrival: {arrival.strftime('%H:%M')} (Duration: {duration:.0f} min)")
             print(f" Segments: {len(segments)} trains, {len(set(s['to_station'] for s in segments))} stations")
-            
             for i, seg in enumerate(segments, 1):
                 dep_time = seg['departure_time'].strftime('%H:%M')
                 arr_time = seg['arrival_time'].strftime('%H:%M')
@@ -342,6 +416,8 @@ def task_4_2_demo():
 # Run Demos
 
 if __name__ == "__main__":
+    #print_unique_station_names(normalize=True)
+    #print_unique_station_names(normalize=False)
     task_4_1_demo()
     task_4_2_demo()
 
