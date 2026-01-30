@@ -9,3 +9,6 @@ data/*
 !data/_extracted/
 data/_extracted/*
 !data/_extracted/.gitkeep
+task3/output/
+task3/data/
+task3/__pycache__/
