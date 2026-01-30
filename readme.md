@@ -1,4 +1,4 @@
-Instructions on how to run code for tasks 1,2 and 4. To execute code related to task 3, please read the readme in the `task3/` directory
+Instructions on how to run code for tasks 1,2 and 4. To execute code related to task 3, please refer to the readme in the `task3/` directory
 
 In the project root directory run:
 
