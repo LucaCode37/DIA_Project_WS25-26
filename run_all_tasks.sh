@@ -1,9 +1,5 @@
 set -e
 
-echo "[1/6] Baue Images und starte Container ..."
-docker-compose up -d --build
-sleep 5
-
 echo "Task 1.1: Star-Schema"
 docker exec dia_project bash -c "psql -U dia_user -d db_berlin -f /sql/task_1_star_schema.sql"
 

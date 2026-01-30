@@ -1,4 +1,6 @@
-To run the code for task 3
+Instructions on how to run code related to task 3
+
+**all of the commands run from within the `task3` directory**
 
 1. create a virtual python environment with `python -m venv .venv/`
 2. activate the virtual python environment with `source .venv/bin/activate`
