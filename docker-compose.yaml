@@ -3,7 +3,7 @@ services:
     image: postgres:17
     container_name: dia_project
     ports:
-      - "5434:5432"
+      - '5434:5432'
     environment:
       POSTGRES_USER: dia_user
       POSTGRES_PASSWORD: dia
@@ -16,7 +16,7 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin_berlin
     ports:
-      - "8081:80"
+      - '8081:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: dia@gmail.com
       PGADMIN_DEFAULT_PASSWORD: admin
@@ -41,34 +41,14 @@ services:
       - PGHOST=db
       - PGPORT=5432
     ports:
-      - "7077:7077"
-      - "8080:8080"
-    volumes:
-      - ./src:/opt/spark-apps 
-      - ./data:/opt/data
-    command: >
-      bash -c "mkdir -p /opt/spark/work-dir/.ivy2 &&
-               /opt/spark/sbin/start-master.sh &&
-               tail -f /dev/null"
-
-  spark-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: spark-java11:3.5.1
-    hostname: spark-worker
-    depends_on:
-      - spark-master
-    environment:
-      - SPARK_WORKER_CORES=2 # Adjust based on your CPU
-      - SPARK_WORKER_MEMORY=2G # Adjust based on your RAM
-      - SPARK_SUBMIT_OPTS=-Divy.home=/opt/spark/work-dir/.ivy2
+      - '7077:7077'
+      - '8080:8080'
     volumes:
       - ./src:/opt/spark-apps
       - ./data:/opt/data
     command: >
       bash -c "mkdir -p /opt/spark/work-dir/.ivy2 &&
-               /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&
+               /opt/spark/sbin/start-master.sh &&
                tail -f /dev/null"
 
 volumes:

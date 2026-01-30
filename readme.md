@@ -1,5 +1,7 @@
 Instructions on how to run code for tasks 1,2 and 4. To execute code related to task 3, please refer to the readme in the `task3/` directory
 
+Before running the code, please ensure that you placed the `timetable_changes` and `timetables` folders from the dataset in the `data/` directory. Otherwise the code won't work as expected.
+
 In the project root directory run:
 
 1. `docker compose build`
