@@ -4,8 +4,6 @@ pytest
 sqlalchemy
 psycopg2-binary
 pyspark
-pandas
-matplotlib
 seaborn
 folium
 networkx

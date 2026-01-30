@@ -24,6 +24,9 @@ services:
       - db
 
   spark-master:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: spark-java11:3.5.1
     container_name: spark-master
     hostname: spark-master
@@ -49,6 +52,9 @@ services:
                tail -f /dev/null"
 
   spark-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: spark-java11:3.5.1
     hostname: spark-worker
     depends_on:

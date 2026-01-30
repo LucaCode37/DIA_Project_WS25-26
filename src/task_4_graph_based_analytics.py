@@ -328,7 +328,7 @@ def earliest_arrival_time(timetable: Dict, source: str, target: str, departure_t
             continue
         visited[current_station] = current_time
         
-        
+    
         for conn in outgoing[current_station]:
             if conn['departure_time'] >= current_time:
                 new_arrival = conn['arrival_time']
@@ -341,7 +341,7 @@ def earliest_arrival_time(timetable: Dict, source: str, target: str, departure_t
     
     return None
 
-# Demo Functions (can change test_routes, for more example)
+# Demo Functions (can change test_routes, for more example/others)
 
 def task_4_1_demo():
     print("\n")
@@ -415,6 +415,7 @@ def task_4_2_demo():
 # Run Demos
 
 if __name__ == "__main__":
+    # Uncomment to print unique station names / can be commented out to see the normiatiton effects
     #print_unique_station_names(normalize=True)
     #print_unique_station_names(normalize=False)
     task_4_1_demo()
