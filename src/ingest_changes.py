@@ -1,4 +1,4 @@
-
+from typing import Optional, Set, Dict
 """
 Ingest DB timetable_changes (15-min snapshots) into my DIA schema.
 
@@ -45,7 +45,7 @@ def safe_timekey_from_attr(v: str):
     return None
 
 
-def compute_delay_minutes(pt_key: int | None, ct_key: int | None, dc: str | None):
+def compute_delay_minutes(pt_key: Optional[int], ct_key: Optional[int], dc: Optional[str]):
     # If dc exists and is numeric, it is the most direct delay signal.
     if dc and dc.lstrip("-").isdigit():
         return int(dc)
@@ -131,7 +131,7 @@ DO UPDATE SET
 """
 
 
-def upsert_time(cur, dt: datetime, cache: set[int]) -> int:
+def upsert_time(cur, dt: datetime, cache: Set[int]) -> int:
     k = time_key(dt)
     if k in cache:
         return k
@@ -177,8 +177,8 @@ def ingest_changes(cur, week_changes_dir: str, batch_size: int = 800):
     cur.execute("SELECT eva, station_key FROM dim_station;")
     station_key_by_eva = {int(e): int(k) for (e, k) in cur.fetchall()}
 
-    time_cache: set[int] = set()
-    train_cache: dict[tuple, int] = {}
+    time_cache: Set[int] = set()
+    train_cache: Dict[tuple, int] = {}
 
     unknown_train_key = ensure_unknown_train(cur)
 

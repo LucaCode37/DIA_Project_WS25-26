@@ -10,6 +10,7 @@ services:
       POSTGRES_DB: db_berlin
     volumes:
       - db_berlin_data:/var/lib/postgresql/data
+      - ./sql:/sql
 
   pgadmin:
     image: dpage/pgadmin4
@@ -23,7 +24,7 @@ services:
       - db
 
   spark-master:
-    image: apache/spark:3.5.1-python3
+    image: spark-java11:3.5.1
     container_name: spark-master
     hostname: spark-master
     environment:
@@ -31,19 +32,24 @@ services:
       - SPARK_MASTER_PORT=7077
       - SPARK_MASTER_WEBUI_PORT=8080
       - SPARK_SUBMIT_OPTS=-Divy.home=/opt/spark/work-dir/.ivy2
+      - PGDATABASE=db_berlin
+      - PGUSER=dia_user
+      - PGPASSWORD=dia
+      - PGHOST=db
+      - PGPORT=5432
     ports:
       - "7077:7077"
       - "8080:8080"
     volumes:
       - ./src:/opt/spark-apps 
-      - ./data:/opt/spark-data
+      - ./data:/opt/data
     command: >
       bash -c "mkdir -p /opt/spark/work-dir/.ivy2 &&
                /opt/spark/sbin/start-master.sh &&
                tail -f /dev/null"
 
   spark-worker:
-    image: apache/spark:3.5.1-python3
+    image: spark-java11:3.5.1
     hostname: spark-worker
     depends_on:
       - spark-master
@@ -53,7 +59,7 @@ services:
       - SPARK_SUBMIT_OPTS=-Divy.home=/opt/spark/work-dir/.ivy2
     volumes:
       - ./src:/opt/spark-apps
-      - ./data:/opt/spark-data
+      - ./data:/opt/data
     command: >
       bash -c "mkdir -p /opt/spark/work-dir/.ivy2 &&
                /opt/spark/sbin/start-worker.sh spark://spark-master:7077 &&

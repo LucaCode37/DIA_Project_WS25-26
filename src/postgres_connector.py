@@ -7,8 +7,8 @@ class PostgresConnector:
         dbname: str = "db_berlin",
         user: str = "dia_user",
         password: str = "dia",
-        host: str = "localhost",
-        port: int = 5434,
+        host: str = "db",
+        port: int = 5432,
     ):
         self.dbname = dbname
         self.user = user

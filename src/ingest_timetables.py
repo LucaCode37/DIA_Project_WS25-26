@@ -1,4 +1,4 @@
-
+from typing import Optional, Set, Dict
 import os
 import re
 import json
@@ -159,7 +159,7 @@ DO UPDATE SET
 """
 
 
-def upsert_time(cur, dt: datetime, cache: set[int]) -> int:
+def upsert_time(cur, dt: datetime, cache: Set[int]) -> int:
     k = time_key(dt)
     if k in cache:
         return k
@@ -203,8 +203,8 @@ def ingest_timetables(cur, week_timetable_dir: str, station_json_path: str, batc
     cur.execute("SELECT eva, station_key FROM dim_station;")
     station_key_by_eva = {int(e): int(k) for (e, k) in cur.fetchall()}
 
-    time_cache: set[int] = set()
-    train_cache: dict[tuple, int] = {}
+    time_cache: Set[int] = set()
+    train_cache: Dict[tuple, int] = {}
 
     snap_count = 0
     xml_count = 0
